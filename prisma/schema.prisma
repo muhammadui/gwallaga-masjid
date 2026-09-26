@@ -1,0 +1,332 @@
+// Gwallaga Juma'at Masjid — phase 1 data model.
+// Money is always stored in kobo (Int). Times of day are "HH:mm" strings in
+// Africa/Lagos. Runtime client: src/lib/db.ts (pooled URL + @prisma/adapter-pg).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── better-auth ────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  REGISTRAR
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          Role      @default(REGISTRAR)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  certificatesIssued Certificate[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// ─── Settings (singletons: id = "default") ──────────────────────────────────
+
+model SiteSettings {
+  id           String   @id @default("default")
+  masjidName   String   @default("Gwallaga Juma'at Masjid")
+  address      String   @default("Gwallaga, Murtala Muhammad Way, Bauchi")
+  phone        String?
+  whatsapp     String?
+  email        String?
+  nikahFeeKobo Int      @default(1500000)
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
+}
+
+model PrayerSettings {
+  id                  String   @id @default("default")
+  fajrIqamahOffset    Int      @default(25)
+  dhuhrIqamahOffset   Int      @default(15)
+  asrIqamahOffset     Int      @default(15)
+  maghribIqamahOffset Int      @default(5)
+  ishaIqamahOffset    Int      @default(15)
+  jumuahFirst         String   @default("13:30")
+  jumuahSecond        String?
+  hijriOffsetDays     Int      @default(0)
+  calculationMethod   String   @default("Egyptian")
+  updatedBy           String?
+  updatedAt           DateTime @updatedAt
+}
+
+// ─── Nikah ──────────────────────────────────────────────────────────────────
+
+model NikahSlot {
+  id        String   @id @default(cuid())
+  weekday   Int // 0 = Sunday … 6 = Saturday
+  time      String // "10:00"
+  capacity  Int      @default(1)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings NikahBooking[]
+
+  @@unique([weekday, time])
+}
+
+enum NikahStatus {
+  PENDING_PAYMENT
+  PAID
+  CONFIRMED
+  SOLEMNIZED
+  CANCELLED
+  EXPIRED
+}
+
+enum SadakiStatus {
+  PAID
+  DEFERRED
+}
+
+model NikahBooking {
+  id          String      @id @default(cuid())
+  bookingRef  String      @unique // NK-2026-0142
+  status      NikahStatus @default(PENDING_PAYMENT)
+  scheduledAt DateTime
+  slotLabel   String // "Saturday 10:00"
+  slotId      String?
+  slot        NikahSlot?  @relation(fields: [slotId], references: [id], onDelete: SetNull)
+
+  groomName    String
+  groomPhone   String
+  groomEmail   String?
+  groomAddress String
+  groomAge     Int
+
+  brideName    String
+  bridePhone   String?
+  brideEmail   String?
+  brideAddress String
+  brideAge     Int
+
+  waliName         String
+  waliRelationship String
+  waliPhone        String
+
+  witness1Name  String
+  witness1Phone String
+  witness2Name  String
+  witness2Phone String
+
+  sadakiAmountKobo Int
+  sadakiStatus     SadakiStatus
+
+  notes         String?
+  feeKobo       Int
+  checklist     Json? // { waliConsent, witnesses, sadakiDeclared, bothConsent, idsSighted }
+  officiantName String?
+  solemnizedAt  DateTime?
+  expiresAt     DateTime? // unpaid bookings expire (48h)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  payments    Payment[]
+  certificate Certificate?
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  SERVICEFABRIC
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+}
+
+model Payment {
+  id          String          @id @default(cuid())
+  bookingId   String
+  booking     NikahBooking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider    PaymentProvider
+  reference   String          @unique
+  providerRef String?
+  amountKobo  Int
+  status      PaymentStatus   @default(INITIATED)
+  channel     String?
+  raw         Json?
+  paidAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([bookingId])
+}
+
+model Certificate {
+  id            String       @id @default(cuid())
+  bookingId     String       @unique
+  booking       NikahBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  certificateNo String       @unique // GJM/NK/2026/0142
+  pdf           Bytes
+  issuedAt      DateTime     @default(now())
+  issuedById    String?
+  issuedBy      User?        @relation(fields: [issuedById], references: [id], onDelete: SetNull)
+  revokedAt     DateTime?
+}
+
+// ─── Giving ─────────────────────────────────────────────────────────────────
+
+enum DonationPurpose {
+  SADAQAH
+  ZAKAT
+  UPKEEP
+  IFTAR
+  ORPHANS
+  CAMPAIGN
+}
+
+enum DonationFrequency {
+  ONE_OFF
+  MONTHLY
+}
+
+enum DonationStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  PENDING_TRANSFER
+}
+
+model Donation {
+  id                       String            @id @default(cuid())
+  reference                String            @unique
+  purpose                  DonationPurpose
+  campaignId               String?
+  campaign                 Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  amountKobo               Int // what the masjid nets (intended gift)
+  feesCoveredKobo          Int               @default(0) // extra charged so the masjid nets amountKobo
+  frequency                DonationFrequency @default(ONE_OFF)
+  donorName                String?
+  donorEmail               String?
+  donorPhone               String?
+  anonymous                Boolean           @default(false)
+  provider                 PaymentProvider
+  providerRef              String?
+  status                   DonationStatus    @default(INITIATED)
+  channel                  String?
+  paystackPlanCode         String?
+  paystackSubscriptionCode String?
+  paystackEmailToken       String?
+  subscriptionActive       Boolean?
+  paidAt                   DateTime?
+  raw                      Json?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  @@index([status])
+  @@index([purpose])
+  @@index([createdAt])
+  @@index([paystackSubscriptionCode])
+}
+
+model Campaign {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  description String
+  purpose     DonationPurpose @default(CAMPAIGN)
+  targetKobo  Int
+  raisedKobo  Int             @default(0) // denormalized, incremented by the webhook
+  active      Boolean         @default(true)
+  coverImage  String?
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  donations   Donation[]
+}
+
+/// Paystack Plans are created lazily, one per (amount, interval).
+model PaystackPlan {
+  id         String   @id @default(cuid())
+  amountKobo Int
+  interval   String // "monthly"
+  planCode   String   @unique
+  createdAt  DateTime @default(now())
+
+  @@unique([amountKobo, interval])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  bankName      String
+  accountName   String
+  accountNumber String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Content ────────────────────────────────────────────────────────────────
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([publishedAt])
+}

@@ -1,26 +1,322 @@
 @import "tailwindcss";
 
+/* Dark scheme is opt-in via data-theme="dark" on <html> (light-first brand). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ─── Brand palette (raw) ─────────────────────────────────────────────────── */
+@theme {
+  --color-limestone: #f4efe6;
+  --color-limestone-deep: #ece5d8;
+  --color-ink: #1b1815;
+  --color-ink-soft: #4a433b;
+  --color-sand: #e4dac8;
+  --color-clay: #9c6b43;
+  --color-indigo: #1f2a5a;
+  --color-indigo-deep: #161e42;
+  --color-indigo-soft: #2c3a75;
+  --color-gold: #b8974f;
+
+  /* Motion: mass + spring, never linear / ease-in-out */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Editorial display scale (Fraunces). Hero sits at 7–9vw. */
+  --text-display-hero: clamp(3.25rem, 8vw, 9.5rem);
+  --text-display-hero--line-height: 0.92;
+  --text-display-hero--letter-spacing: -0.035em;
+  --text-display-xl: clamp(2.75rem, 6vw, 6.75rem);
+  --text-display-xl--line-height: 0.95;
+  --text-display-xl--letter-spacing: -0.03em;
+  --text-display-lg: clamp(2.25rem, 4.4vw, 4.75rem);
+  --text-display-lg--line-height: 1;
+  --text-display-lg--letter-spacing: -0.025em;
+  --text-display-md: clamp(1.875rem, 3.1vw, 3.375rem);
+  --text-display-md--line-height: 1.05;
+  --text-display-md--letter-spacing: -0.02em;
+  --text-display-sm: clamp(1.5rem, 2.1vw, 2.25rem);
+  --text-display-sm--line-height: 1.12;
+  --text-display-sm--letter-spacing: -0.015em;
+  --text-lede: clamp(1.125rem, 1.35vw, 1.375rem);
+  --text-lede--line-height: 1.55;
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1;
+  --text-eyebrow--letter-spacing: 0.22em;
+
+  --radius-pill: 9999px;
+  --radius-field: 0.875rem;
+  --radius-panel: 2rem;
+}
+
+/* ─── Semantic tokens (switch per scheme / tone) ──────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ground: var(--color-limestone);
+  --fg: var(--color-ink);
+  --fg-muted: color-mix(in oklab, var(--color-ink) 64%, var(--color-limestone));
+  --surface: color-mix(in oklab, white 42%, var(--color-limestone));
+  --line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --line-strong: color-mix(in oklab, var(--color-ink) 22%, transparent);
+  --accent: var(--color-indigo);
+  --accent-fg: var(--color-limestone);
+  --hairline-gold: color-mix(in oklab, var(--color-gold) 70%, transparent);
+  --ring: var(--color-indigo);
+  --danger: #9b2c1f;
+
+  --section-y: clamp(6rem, 12vw, 15rem);
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --measure: 38rem;
+  --header-h: 5.5rem;
+
+  --z-header: 40;
+  --z-overlay: 50;
+  --z-toast: 60;
+  --z-grain: 70;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --ground: #12100e;
+  --fg: #efe8dc;
+  --fg-muted: color-mix(in oklab, #efe8dc 62%, #12100e);
+  --surface: color-mix(in oklab, #efe8dc 5%, #12100e);
+  --line: color-mix(in oklab, #efe8dc 13%, transparent);
+  --line-strong: color-mix(in oklab, #efe8dc 24%, transparent);
+  --accent: #9aa8e6;
+  --accent-fg: #12100e;
+  --ring: #9aa8e6;
+  --danger: #e88a7c;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-arabic: var(--font-amiri), "Traditional Arabic", serif;
+  --font-arabic-ui: var(--font-plex-arabic), var(--font-inter), sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Section tones (applied by <Section tone>) ───────────────────────────── */
+.tone-limestone {
+  --ground: var(--color-limestone);
+  --fg: var(--color-ink);
+  --fg-muted: color-mix(in oklab, var(--color-ink) 64%, var(--color-limestone));
+  --line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --accent: var(--color-indigo);
+  --accent-fg: var(--color-limestone);
+  --ring: var(--color-indigo);
+}
+.tone-sand {
+  --ground: var(--color-sand);
+  --fg: var(--color-ink);
+  --fg-muted: color-mix(in oklab, var(--color-ink) 66%, var(--color-sand));
+  --surface: color-mix(in oklab, white 30%, var(--color-sand));
+  --line: color-mix(in oklab, var(--color-ink) 14%, transparent);
+  --accent: var(--color-indigo);
+  --accent-fg: var(--color-limestone);
+  --ring: var(--color-indigo);
+}
+.tone-indigo {
+  --ground: var(--color-indigo);
+  --fg: var(--color-limestone);
+  --fg-muted: color-mix(in oklab, var(--color-limestone) 68%, var(--color-indigo));
+  --surface: color-mix(in oklab, white 6%, var(--color-indigo));
+  --line: color-mix(in oklab, var(--color-limestone) 16%, transparent);
+  --line-strong: color-mix(in oklab, var(--color-limestone) 28%, transparent);
+  --accent: var(--color-limestone);
+  --accent-fg: var(--color-indigo);
+  --ring: var(--color-sand);
+}
+.tone-limestone,
+.tone-sand,
+.tone-indigo {
+  background-color: var(--ground);
+  color: var(--fg);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    background-color: var(--ground);
+    color: var(--fg);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-indigo) 85%, transparent);
+    color: var(--color-limestone);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  a {
+    text-underline-offset: 0.22em;
+    text-decoration-thickness: 1px;
+  }
+  [lang="ar"] {
+    font-feature-settings: normal;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Type helpers ────────────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 50, "WONK" 0;
+  font-weight: 380;
+}
+.font-arabic {
+  font-family: var(--font-arabic);
+  line-height: 1.9;
+  font-feature-settings: normal;
+  letter-spacing: 0;
+}
+.font-arabic-ui {
+  font-family: var(--font-arabic-ui);
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+/* ─── Utilities ───────────────────────────────────────────────────────────── */
+@utility hairline-t {
+  border-top: 1px solid var(--line);
+}
+@utility hairline-b {
+  border-bottom: 1px solid var(--line);
+}
+@utility hairline-y {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+@utility hairline-l {
+  border-left: 1px solid var(--line);
+}
+@utility hairline-gold {
+  border-color: var(--hairline-gold);
+}
+@utility section-y {
+  padding-block: var(--section-y);
+}
+@utility measure {
+  max-width: var(--measure);
+}
+@utility gutter-x {
+  padding-inline: var(--gutter);
+}
+
+/* Fixed, pointer-less paper grain (never on scrolling containers). */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Slow limestone → sand drift used by placeholder imagery bands. */
+@keyframes drift {
+  0%,
+  100% {
+    background-position: 0% 40%;
+  }
+  50% {
+    background-position: 100% 60%;
+  }
+}
+.placeholder-drift {
+  background-image: linear-gradient(
+    115deg,
+    var(--color-limestone) 0%,
+    var(--color-sand) 38%,
+    var(--color-limestone-deep) 62%,
+    var(--color-sand) 100%
+  );
+  background-size: 220% 220%;
+  animation: drift 28s var(--ease-soft) infinite;
+}
+
+/* Skip link */
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: calc(var(--z-overlay) + 1);
+  transform: translateY(-160%);
+  border-radius: var(--radius-pill);
+  background: var(--color-indigo);
+  color: var(--color-limestone);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  transition: transform 500ms var(--ease-out-expo);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+.lenis [data-lenis-prevent],
+.lenis [data-lenis-prevent-wheel],
+.lenis [data-lenis-prevent-touch] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .placeholder-drift {
+    animation: none;
+  }
 }
