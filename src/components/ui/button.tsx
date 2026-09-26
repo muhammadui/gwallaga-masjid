@@ -97,16 +97,16 @@ export function Button({
   const hasIcon = icon !== undefined && icon !== false && icon !== null;
   const iconSize = size === "sm" ? 13 : size === "lg" ? 18 : 15;
 
-  const content = hasIcon ? (
-    <>
-      <Slot.Slottable>{children}</Slot.Slottable>
-      <span aria-hidden className={iconShell({ variant, size })}>
-        {icon === true ? <ArrowUpRight size={iconSize} strokeWidth={1.4} /> : icon}
-      </span>
-    </>
-  ) : (
-    children
-  );
+  // An array (not a Fragment): Radix Slot must see Slottable as a direct child,
+  // otherwise asChild + icon merges the classes into the Fragment and loses them.
+  const content = hasIcon
+    ? [
+        <Slot.Slottable key="label">{children}</Slot.Slottable>,
+        <span key="icon" aria-hidden className={iconShell({ variant, size })}>
+          {icon === true ? <ArrowUpRight size={iconSize} strokeWidth={1.4} /> : icon}
+        </span>,
+      ]
+    : children;
 
   const el = (
     <Comp

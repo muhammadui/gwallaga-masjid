@@ -320,3 +320,72 @@ html.lenis body {
     animation: none;
   }
 }
+
+/* ─── Prayer engine additions ─────────────────────────────────────────────── */
+@theme {
+  --animate-fade-in: fade-in 0.9s var(--ease-soft) both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Hero load sequence: split lines start hidden only while the page expects to
+ * animate them. The fallback animation reveals them after 2.4s if JS never
+ * runs; reduced-motion shows them immediately.
+ */
+@keyframes hero-fallback {
+  to {
+    opacity: 1;
+  }
+}
+[data-hero-reveal] {
+  opacity: 0;
+  animation: hero-fallback 0.6s var(--ease-soft) 2.4s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-hero-reveal] {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* ─── Print (timetable) ───────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body > header,
+  header.fixed,
+  footer,
+  .skip-link,
+  .grain::after {
+    display: none !important;
+  }
+  .prayer-month {
+    font-size: 8.5pt;
+  }
+  .prayer-month th,
+  .prayer-month td {
+    padding-top: 1.2mm !important;
+    padding-bottom: 1.2mm !important;
+    background: transparent !important;
+  }
+  .prayer-month tr[aria-current="date"] {
+    outline: 1px solid #000;
+  }
+  .prayer-month tr {
+    break-inside: avoid;
+  }
+}
