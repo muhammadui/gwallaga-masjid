@@ -11,6 +11,8 @@ interface MagneticProps {
   children: ReactNode;
   /** How far (0–1) the element follows the pointer. */
   strength?: number;
+  /** Maximum displacement in px on each axis. */
+  max?: number;
   className?: string;
 }
 
@@ -18,7 +20,7 @@ interface MagneticProps {
  * Magnetic hover: the child drifts toward the pointer and springs back on
  * leave. Transform-only. Disabled for reduced motion and coarse pointers.
  */
-export function Magnetic({ children, strength = 0.28, className }: MagneticProps) {
+export function Magnetic({ children, strength = 0.28, max = 8, className }: MagneticProps) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useGSAP(
@@ -31,8 +33,9 @@ export function Magnetic({ children, strength = 0.28, className }: MagneticProps
         const yTo = gsap.quickTo(el, "y", { duration: 0.6, ease: "power3.out" });
         const move = (e: PointerEvent) => {
           const r = el.getBoundingClientRect();
-          xTo((e.clientX - (r.left + r.width / 2)) * strength);
-          yTo((e.clientY - (r.top + r.height / 2)) * strength);
+          const clamp = gsap.utils.clamp(-max, max);
+          xTo(clamp((e.clientX - (r.left + r.width / 2)) * strength));
+          yTo(clamp((e.clientY - (r.top + r.height / 2)) * strength));
         };
         const leave = () => {
           gsap.to(el, { x: 0, y: 0, duration: 0.9, ease: "elastic.out(1, 0.45)" });
@@ -46,7 +49,7 @@ export function Magnetic({ children, strength = 0.28, className }: MagneticProps
       });
       return () => mm.revert();
     },
-    { scope: ref, dependencies: [strength] },
+    { scope: ref, dependencies: [strength, max] },
   );
 
   return (
