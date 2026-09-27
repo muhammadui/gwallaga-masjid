@@ -8,6 +8,7 @@ import { useGSAP } from "@gsap/react";
 import { useLenis } from "lenis/react";
 import { t } from "@/i18n/en";
 import { cn } from "@/lib/utils";
+import { preloaderActive } from "@/lib/preloader";
 import { Container } from "@/components/ui/container";
 import { StarPattern } from "@/components/ui/star-pattern";
 import { NAV_LINKS } from "./nav-links";
@@ -32,6 +33,8 @@ export interface HeaderProps {
  */
 export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
   const [solid, setSolid] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const compactSentinel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
@@ -48,6 +51,26 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  // Compact wordmark once the hero has scrolled away (or, on pages without a
+  // hero, together with the solid state). The sentinel is sized to the hero.
+  useEffect(() => {
+    const el = compactSentinel.current;
+    if (!el) return;
+    const hero = document.querySelector<HTMLElement>("[data-hero]");
+    const size = () => {
+      el.style.height = `${hero ? Math.max(hero.offsetHeight - 96, solidAfter) : solidAfter}px`;
+    };
+    size();
+    const io = new IntersectionObserver(([entry]) => setCompact(!entry.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    const ro = hero ? new ResizeObserver(size) : null;
+    if (hero) ro?.observe(hero);
+    return () => {
+      io.disconnect();
+      ro?.disconnect();
+    };
+  }, [pathname, solidAfter]);
 
   // Build the menu timeline once.
   useGSAP(
@@ -82,7 +105,8 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
       overlay.current?.querySelector<HTMLElement>("[data-menu-item] a")?.focus();
     } else {
       tl.current?.timeScale(1.6).reverse();
-      lenis?.start();
+      // The brand preloader holds Lenis until it has gone (see LenisGate).
+      if (!preloaderActive()) lenis?.start();
       document.documentElement.style.overflow = "";
     }
   }, [open, lenis]);
@@ -111,15 +135,27 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
   return (
     <>
       <div ref={sentinel} aria-hidden className="pointer-events-none absolute inset-x-0 top-0" style={{ height: solidAfter }} />
+      <div ref={compactSentinel} aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-12" />
 
-      <header className="fixed inset-x-0 top-0 z-(--z-header) pt-3 sm:pt-4">
+      {/*
+        data-site-header: the home choreography sets data-theme="dark" here
+        while the indigo Minbar section is on screen (header only).
+      */}
+      <header
+        data-site-header
+        data-compact={compact && !open ? "true" : "false"}
+        className="group/header fixed inset-x-0 top-0 z-(--z-header) pt-3 text-fg sm:pt-4"
+      >
         <Container size="wide">
           <div
             className={cn(
               "flex h-16 items-center justify-between gap-6 rounded-full pl-5 pr-2 sm:pl-7",
-              "transition-[background-color,box-shadow,backdrop-filter] duration-700 ease-[var(--ease-spring)]",
+              "transition-[background-color,color,box-shadow,backdrop-filter] duration-700 ease-[var(--ease-spring)]",
               solid || open
-                ? "bg-limestone/85 text-ink shadow-[0_1px_0_rgba(27,24,21,0.06),0_24px_60px_-32px_rgba(27,24,21,0.35)] ring-1 ring-ink/[0.07] backdrop-blur-xl"
+                ? cn(
+                    "bg-limestone/85 text-ink shadow-[0_1px_0_rgba(27,24,21,0.06),0_24px_60px_-32px_rgba(27,24,21,0.35)] ring-1 ring-ink/[0.07] backdrop-blur-xl",
+                    "dark:bg-indigo-deep/80 dark:text-limestone dark:shadow-[0_24px_60px_-32px_rgba(0,0,0,0.6)] dark:ring-limestone/10",
+                  )
                 : "bg-transparent",
             )}
           >
@@ -134,7 +170,7 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
                       aria-current={isActive(l.href) ? "page" : undefined}
                       className={cn(
                         "relative rounded-full px-4 py-2 text-[0.875rem] tracking-[-0.005em] transition-colors duration-500 ease-[var(--ease-spring)]",
-                        "hover:bg-ink/[0.05] aria-[current=page]:text-indigo",
+                        "hover:bg-ink/[0.05] aria-[current=page]:text-indigo dark:hover:bg-limestone/10 dark:aria-[current=page]:text-sand",
                         "after:absolute after:inset-x-4 after:bottom-1 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-500 after:ease-[var(--ease-out-expo)] hover:after:scale-x-100 aria-[current=page]:after:scale-x-100",
                       )}
                     >
@@ -150,12 +186,12 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
                 <div
                   className={cn(
                     "hidden h-12 items-center gap-2.5 rounded-full px-4 text-[0.8125rem] tabular-nums sm:inline-flex",
-                    "bg-ink/[0.04] ring-1 ring-inset ring-ink/10",
+                    "bg-ink/[0.04] ring-1 ring-inset ring-ink/10 dark:bg-limestone/[0.06] dark:ring-limestone/15",
                   )}
                 >
                   <span aria-hidden className="relative flex size-1.5">
-                    <span className="absolute inset-0 animate-ping rounded-full bg-indigo/50 motion-reduce:hidden" />
-                    <span className="relative size-1.5 rounded-full bg-indigo" />
+                    <span className="absolute inset-0 animate-ping rounded-full bg-indigo/50 motion-reduce:hidden dark:bg-sand/50" />
+                    <span className="relative size-1.5 rounded-full bg-indigo dark:bg-sand" />
                   </span>
                   <span className="text-muted">{t.header.nextPrayer}:</span>
                   <span className="font-medium">{nextPrayerSlot}</span>
@@ -172,7 +208,7 @@ export function Header({ nextPrayerSlot, solidAfter = 48 }: HeaderProps) {
                 className="group relative inline-flex h-12 items-center gap-3 rounded-full pl-4 pr-1.5 text-[0.8125rem] font-medium lg:hidden"
               >
                 <span className="sr-only sm:not-sr-only">{open ? t.nav.close : t.nav.menu}</span>
-                <span className="relative flex size-9 items-center justify-center rounded-full bg-ink text-limestone">
+                <span className="relative flex size-9 items-center justify-center rounded-full bg-ink text-limestone transition-colors duration-700 ease-[var(--ease-spring)] dark:bg-limestone dark:text-indigo">
                   <span
                     className={cn(
                       "absolute h-px w-4 bg-current transition-transform duration-500 ease-[var(--ease-spring)]",
