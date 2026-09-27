@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Amiri, Fraunces, IBM_Plex_Sans_Arabic, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
+import { LenisGate } from "@/components/site/lenis-gate";
+import { Preloader } from "@/components/site/preloader";
+import { PRELOADER_DECISION_SCRIPT } from "@/lib/preloader";
 import { t } from "@/i18n/en";
 import "./globals.css";
 
@@ -68,10 +71,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${inter.variable} ${amiri.variable} ${plexArabic.variable}`}
     >
       <body className="grain bg-ground text-fg antialiased">
+        <Preloader />
+        {/* Right after the overlay: decides before first paint whether it runs. */}
+        <script dangerouslySetInnerHTML={{ __html: PRELOADER_DECISION_SCRIPT }} />
         <a href="#main" className="skip-link">
           {t.a11y.skipToContent}
         </a>
-        <SmoothScroll>{children}</SmoothScroll>
+        <SmoothScroll>
+          <LenisGate />
+          {children}
+        </SmoothScroll>
         <Toaster
           position="bottom-center"
           toastOptions={{

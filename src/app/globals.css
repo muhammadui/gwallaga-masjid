@@ -20,6 +20,8 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Damped spring (zeta 0.62, ~8% overshoot) sampled into linear(). */
+  --ease-spring-physics: linear(0, 0.044, 0.152, 0.295, 0.449, 0.599, 0.733, 0.845, 0.934, 0.999, 1.043, 1.07, 1.082, 1.083, 1.077, 1.067, 1.054, 1.041, 1.029, 1.019, 1.01, 1.003, 0.999, 0.995, 0.994, 0.993, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 1);
 
   /* Editorial display scale (Fraunces). Hero sits at 7–9vw. */
   --text-display-hero: clamp(3.25rem, 8vw, 9.5rem);
@@ -70,6 +72,7 @@
   --z-header: 40;
   --z-overlay: 50;
   --z-toast: 60;
+  --z-preloader: 65;
   --z-grain: 70;
 
   color-scheme: light;
@@ -353,6 +356,49 @@ html.lenis body {
     opacity: 1;
     animation: none;
   }
+}
+
+/*
+ * Brand preloader. Hidden unless the inline decision script set
+ * data-state="on" on it before first paint (see @/lib/preloader). The page
+ * renders underneath; scroll is locked only while the overlay is up. If JS never
+ * takes over, the failsafe animations hide it and unlock scroll after 3s.
+ */
+.preloader {
+  display: none;
+}
+.preloader[data-state="on"] {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-preloader);
+  overflow: hidden;
+  cursor: default;
+  animation: preloader-failsafe 0.3s var(--ease-soft) 3s forwards;
+}
+body:has(> .preloader[data-state="on"]) {
+  overflow: hidden;
+  animation: preloader-unlock 0s linear 3s forwards;
+}
+/* Until JS has measured the dashes, the undrawn stroke must not flash. */
+.preloader [data-variant="stroke"] {
+  visibility: hidden;
+}
+@keyframes preloader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes preloader-unlock {
+  to {
+    overflow: visible;
+  }
+}
+/* Wordmark morph between routes (React <ViewTransition name> in wordmark.tsx). */
+::view-transition-group(gwallaga-wordmark) {
+  animation-duration: 0.6s;
+  animation-timing-function: var(--ease-spring);
 }
 
 /* ─── Print (timetable) ───────────────────────────────────────────────────── */
